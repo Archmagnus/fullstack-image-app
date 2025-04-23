@@ -3,3 +3,4 @@ uvicorn
 python-multipart
 aiofiles
 python-dotenv
+streamlit>=1.30.0
