@@ -1,0 +1,5 @@
+requestsstreamlit
+pandas
+numpy
+Pillow
+requests
