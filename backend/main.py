@@ -37,8 +37,8 @@ class SimpleSegNet(nn.Module):
 # FastAPI app setup
 app = FastAPI()
 
-# Initialize the model
-MODEL_PATH = "segnet_model.pth"
+# Define model file path
+MODEL_PATH = r"C:\Users\archi\Desktop\fullstack-image-app\segnet_model.pth"
 
 # Helper function to check file existence and size
 def check_model_file():
@@ -47,7 +47,7 @@ def check_model_file():
         if file_size == 0:
             raise Exception(f"The model file '{MODEL_PATH}' is empty or corrupted.")
         print(f"Model file found with size: {file_size} bytes")
-        return torch.load(MODEL_PATH)
+        return torch.load(MODEL_PATH, map_location=device)  # Ensure the model is loaded onto the correct device
     else:
         raise FileNotFoundError(f"Model file '{MODEL_PATH}' not found.")
 
