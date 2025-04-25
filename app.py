@@ -1,10 +1,21 @@
-from backend.auth import router as auth_router
-from backend.upload import router as upload_router
-from backend.main import run_main_app  # if it's defined in main.py
-
+# app.py
 import streamlit as st
-from backend.main import run_main_app  # assuming you defined a run_main_app() in main.py
+import requests
+import pandas as pd
 
-st.set_page_config(page_title="Image App", layout="wide")
+st.set_page_config(page_title="Data Ingestion Dashboard", layout="wide")
+st.title("📥 Upload Images or Data Files")
 
-run_main_app()
+file = st.file_uploader("Upload an image, CSV, or Excel file", type=["jpg", "png", "csv", "xlsx"])
+
+if file is not None:
+    st.success(f"Uploading: {file.name}")
+    files = {"file": (file.name, file, file.type)}
+    response = requests.post("http://localhost:8000/upload-file/", files=files)
+
+    if response.status_code == 200:
+        st.success("✅ Upload successful!")
+    else:
+        st.error("❌ Upload failed.")
+
+# Future: Display uploaded file records from DB

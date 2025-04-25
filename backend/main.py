@@ -1,24 +1,24 @@
+# backend/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from auth import router as auth_router
-from upload import router as upload_router
-from backend.auth import router as auth_router
-
+from backend.upload import router as upload_router
+from backend.database import create_table
 
 app = FastAPI()
 
-# CORS for frontend connection
+origins = ["*"]  # Allow all for now
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
 )
 
-app.include_router(auth_router)
 app.include_router(upload_router)
 
-@app.get("/")
-def read_root():
-    return {"msg": "Backend Running ✅"}
+@app.on_event("startup")
+def startup():
+    create_table()
+
+# Optional if needed to start FastAPI separately
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
