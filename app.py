@@ -1,66 +1,42 @@
-import os
-import pandas as pd
 import streamlit as st
 import requests
-from PIL import Image
+import zipfile
+import os
+from io import BytesIO
 
-# Page config
 st.set_page_config(page_title="📊 Data Ingestion Dashboard", layout="wide")
 st.title("📥 Upload Files (Image / CSV / Excel)")
 
-# File uploader
-uploaded_file = st.file_uploader("Upload a file", type=["csv", "xlsx", "xls", "png", "jpg", "jpeg"])
+uploaded_file = st.file_uploader("Upload a zip file containing images", type=["zip"])
 
 if uploaded_file is not None:
-    # File details dictionary
-    file_details = {
-        "filename": uploaded_file.name,
-        "filetype": uploaded_file.type,
-        "filesize": f"{round(len(uploaded_file.getvalue())/1024, 2)} KB"
-    }
+    st.write("📄 File details:", uploaded_file.name)
 
-    # 💅 Layout with columns
-    col1, col2 = st.columns([1, 2])
+    # Unzip and display the image files in the zip
+    with zipfile.ZipFile(uploaded_file, "r") as zip_ref:
+        image_names = zip_ref.namelist()
+        st.write(f"Found {len(image_names)} images:")
+        for image in image_names:
+            st.write(f" - {image}")
 
-    with col1:
-        st.write("### 📷 File Preview:")
-        if uploaded_file.type.startswith("image"):
-            st.image(uploaded_file, use_column_width=True)
+    # Ask if user wants to run SegNet on the images
+    run_dl = st.button("Run SegNet Model on Images")
+    if run_dl:
+        # Display the progress bar
+        progress_bar = st.progress(0)
+        status_text = st.empty()
 
-    with col2:
-        st.write("### 🗃️ File Info:")
-        st.json(file_details)
-
-    # For data files (CSV/Excel)
-    if uploaded_file.type in [
-        "text/csv", 
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-        "application/vnd.ms-excel"
-    ]:
-        try:
-            if uploaded_file.type == "text/csv":
-                df = pd.read_csv(uploaded_file)
-            else:
-                df = pd.read_excel(uploaded_file)
-            st.success("✅ File uploaded and parsed successfully.")
-            st.dataframe(df.head(50), use_container_width=True)
-        except Exception as e:
-            st.error(f"❌ Could not read the file: {e}")
-
-    # Upload to FastAPI backend
-    with st.spinner("📡 Uploading to backend..."):
-        files = {
-            "file": (
-                uploaded_file.name,
-                uploaded_file.getvalue(),
-                uploaded_file.type
-            )
-        }
-        try:
-            response = requests.post("http://localhost:8000/upload-file/", files=files)
+        # Send the zip file to backend and get the results
+        with st.spinner("Running SegNet on images..."):
+            response = requests.post("http://localhost:8000/upload-file/", files={"file": uploaded_file})
             if response.status_code == 200:
-                st.success("✅ File uploaded to backend successfully.")
+                results = response.json()
+                status_text.success("✅ SegNet processing complete.")
+                # Display the results (visualize segmented output if possible)
+                for result in results['results']:
+                    st.write(f"Segmentation for {result['image_name']}:")
+                    st.image(result['segmentation_result'])  # Or a processed image if needed
+                progress_bar.progress(100)
             else:
-                st.error("❌ Upload failed.")
-        except requests.exceptions.ConnectionError:
-            st.error("❌ Could not connect to backend. Is FastAPI running?")
+                status_text.error("❌ Something went wrong with the backend.")
+                progress_bar.progress(0)
