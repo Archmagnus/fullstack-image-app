@@ -4,21 +4,39 @@ import streamlit as st
 import requests
 from PIL import Image
 
+# Page config
 st.set_page_config(page_title="📊 Data Ingestion Dashboard", layout="wide")
 st.title("📥 Upload Files (Image / CSV / Excel)")
 
+# File uploader
 uploaded_file = st.file_uploader("Upload a file", type=["csv", "xlsx", "xls", "png", "jpg", "jpeg"])
 
 if uploaded_file is not None:
+    # File details dictionary
     file_details = {
         "filename": uploaded_file.name,
         "filetype": uploaded_file.type,
         "filesize": f"{round(len(uploaded_file.getvalue())/1024, 2)} KB"
     }
-    st.write("📄 File details:", file_details)
 
-    # For data files
-    if uploaded_file.type in ["text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"]:
+    # 💅 Layout with columns
+    col1, col2 = st.columns([1, 2])
+
+    with col1:
+        st.write("### 📷 File Preview:")
+        if uploaded_file.type.startswith("image"):
+            st.image(uploaded_file, use_column_width=True)
+
+    with col2:
+        st.write("### 🗃️ File Info:")
+        st.json(file_details)
+
+    # For data files (CSV/Excel)
+    if uploaded_file.type in [
+        "text/csv", 
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+        "application/vnd.ms-excel"
+    ]:
         try:
             if uploaded_file.type == "text/csv":
                 df = pd.read_csv(uploaded_file)
@@ -29,13 +47,15 @@ if uploaded_file is not None:
         except Exception as e:
             st.error(f"❌ Could not read the file: {e}")
 
-    # For image files
-    elif uploaded_file.type.startswith("image"):
-        st.image(uploaded_file, caption=uploaded_file.name, use_column_width=True)
-
-    # Upload to backend
+    # Upload to FastAPI backend
     with st.spinner("📡 Uploading to backend..."):
-        files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
+        files = {
+            "file": (
+                uploaded_file.name,
+                uploaded_file.getvalue(),
+                uploaded_file.type
+            )
+        }
         try:
             response = requests.post("http://localhost:8000/upload-file/", files=files)
             if response.status_code == 200:
