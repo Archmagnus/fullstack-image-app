@@ -2,14 +2,12 @@ import os
 import zipfile
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import numpy as np
 from fastapi import FastAPI, File, UploadFile
 from io import BytesIO
 from PIL import Image
 from typing import List
-from pathlib import Path
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 import io
 
 # Device setup
@@ -41,12 +39,27 @@ app = FastAPI()
 
 # Initialize the model
 MODEL_PATH = "segnet_model.pth"
-if os.path.exists(MODEL_PATH):
+
+# Helper function to check file existence and size
+def check_model_file():
+    if os.path.exists(MODEL_PATH):
+        file_size = os.path.getsize(MODEL_PATH)
+        if file_size == 0:
+            raise Exception(f"The model file '{MODEL_PATH}' is empty or corrupted.")
+        print(f"Model file found with size: {file_size} bytes")
+        return torch.load(MODEL_PATH)
+    else:
+        raise FileNotFoundError(f"Model file '{MODEL_PATH}' not found.")
+
+# Load the model if the file is valid
+try:
     model = SimpleSegNet(num_classes=2).to(device)
-    model.load_state_dict(torch.load(MODEL_PATH))  # Load a pretrained model if available
+    model.load_state_dict(check_model_file())  # Load a pretrained model if available
     model.eval()
-else:
-    raise FileNotFoundError(f"Model file '{MODEL_PATH}' not found.")
+    print("Model loaded successfully.")
+except Exception as e:
+    print(f"Error loading model: {str(e)}")
+    raise
 
 # Helper function to run the model on the image
 def run_segnet_on_image(image: Image.Image) -> torch.Tensor:
@@ -100,4 +113,3 @@ async def upload_file(file: UploadFile = File(...)):
         return JSONResponse(content={"status": "success", "results": result_data}, status_code=200)
     except Exception as e:
         return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
-
