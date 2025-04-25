@@ -1,23 +1,14 @@
 import streamlit as st
 import requests
-import zipfile
-import os
-from io import BytesIO
+from PIL import Image
+import io
 
-st.set_page_config(page_title="📊 Data Ingestion Dashboard", layout="wide")
-st.title("📥 Upload Files (Image / CSV / Excel)")
+st.title("Segmentation Results")
 
 uploaded_file = st.file_uploader("Upload a zip file containing images", type=["zip"])
 
 if uploaded_file is not None:
     st.write("📄 File details:", uploaded_file.name)
-
-    # Unzip and display the image files in the zip
-    with zipfile.ZipFile(uploaded_file, "r") as zip_ref:
-        image_names = zip_ref.namelist()
-        st.write(f"Found {len(image_names)} images:")
-        for image in image_names:
-            st.write(f" - {image}")
 
     # Ask if user wants to run SegNet on the images
     run_dl = st.button("Run SegNet Model on Images")
@@ -32,11 +23,12 @@ if uploaded_file is not None:
             if response.status_code == 200:
                 results = response.json()
                 status_text.success("✅ SegNet processing complete.")
+                
                 # Display the results (visualize segmented output if possible)
                 for result in results['results']:
-                    st.write(f"Segmentation for {result['image_name']}:")
-                    st.image(result['segmentation_result'])  # Or a processed image if needed
-                progress_bar.progress(100)
+                    img_bytes = io.BytesIO(result['segmentation_result'])
+                    seg_img = Image.open(img_bytes)
+                    st.image(seg_img, caption=result['image_name'])
             else:
                 status_text.error("❌ Something went wrong with the backend.")
                 progress_bar.progress(0)
